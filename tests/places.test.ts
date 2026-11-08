@@ -20,14 +20,14 @@ test('mapping, country validation, missing fields, coordinates and duplicates', 
   assert.equal(mapPlaces([{ ...fixture, name: undefined, address: undefined }])[0]?.title, fixture.display_name);
   assert.deepEqual(mapPlaces([]), []);
   assert.deepEqual(mapPlaces(null), []);
-  assert.equal(mapPlaces(Array.from({ length: 20 }, (_, i) => ({ ...fixture, osm_id: i }))).length, 10);
+  assert.equal(mapPlaces(Array.from({ length: 20 }, (_, i) => ({ ...fixture, osm_id: i }))).length, 19);
 });
 test('HTTP request is Russia-only, Russian, identified and bounded', async () => {
   const http: typeof fetch = async (input, init) => {
     const url = new URL(String(input));
     assert.equal(url.searchParams.get('countrycodes'), 'ru');
     assert.equal(url.searchParams.get('accept-language'), 'ru');
-    assert.equal(url.searchParams.get('limit'), '10');
+    assert.equal(url.searchParams.get('limit'), '40');
     assert.equal(url.searchParams.get('q'), 'Эрмитаж');
     assert.match(String((init?.headers as Record<string, string>)['User-Agent']), /KudaPoytiBot.*contact@example.org/);
     assert.ok(init?.signal);

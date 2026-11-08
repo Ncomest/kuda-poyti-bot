@@ -9,6 +9,9 @@ export class Cache<T> {
     return item.value;
   }
   set(key: string, value: T, ttl = this.ttl) {
+    for (const [entryKey, item] of this.entries) {
+      if (item.expires <= this.now()) { this.bytes -= item.bytes; this.entries.delete(entryKey); }
+    }
     const bytes = Buffer.byteLength(key) + Buffer.byteLength(JSON.stringify(value));
     if (bytes > this.maxBytes) return;
     const old = this.entries.get(key);

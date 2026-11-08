@@ -42,5 +42,7 @@ test('inline pagination, invalid offsets and provider errors use chat buttons wi
   assert.ok(answers[1].results.every((p: any) => p.type === 'venue' && !('input_message_content' in p)));
   await update('кафе Воронеж !', 'malformed');
   await update('ошибка !', '');
-  for (const answer of answers.slice(2)) { assert.deepEqual(answer.results, []); assert.equal(answer.button.start_parameter, 'PROVIDER_ERROR'); }
+  for (const answer of answers.slice(2)) assert.deepEqual(answer.results, []);
+  assert.equal(answers[2].button.start_parameter, 'INVALID_OFFSET');
+  assert.equal(answers[3].button.start_parameter, 'PROVIDER_ERROR');
 });

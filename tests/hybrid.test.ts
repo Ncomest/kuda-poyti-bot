@@ -76,8 +76,10 @@ test('abort interrupts Overpass and the shared deadline also covers city lookup'
   let calls = 0;
   const shared = AbortSignal.timeout(10);
   const hybrid = new HybridPlacesProvider({ async search() { return []; } }, {
-    cities: new CityResolver(async (_q, s) => { assert.equal(s, shared); await new Promise(r => setTimeout(r, 20)); return [boundary]; }),
-    overpass: new Overpass('https://example.org', async () => { calls++; return Response.json(data(node)); }),
+    async search(category, name, s) {
+      const resolved = await new CityResolver(async (_q, s) => { assert.equal(s, shared); await new Promise(r => setTimeout(r, 20)); return [boundary]; }).resolve(name, s);
+      return new Overpass('https://example.org', async () => { calls++; return Response.json(data(node)); }).search(resolved, category, s);
+    },
   });
   await assert.rejects(hybrid.search('кафе Воронеж', shared), status('TIMEOUT'));
   assert.equal(calls, 0);
@@ -85,7 +87,7 @@ test('abort interrupts Overpass and the shared deadline also covers city lookup'
 test('production categories are disabled and never query Nominatim or return mocks', async () => {
   let calls = 0;
   const hybrid = new HybridPlacesProvider({ async search() { calls++; return []; } });
-  await assert.rejects(hybrid.search('кафе Воронеж'), status('PROVIDER_ERROR'));
+  await assert.rejects(hybrid.search('кафе Воронеж'), status('CATEGORY_UNAVAILABLE'));
   await assert.rejects(hybrid.search('магазины Воронеж'), status('UNSUPPORTED_CATEGORY'));
   assert.equal(calls, 0);
   await hybrid.search('Пятёрочка Воронеж'); assert.equal(calls, 1);
@@ -93,8 +95,10 @@ test('production categories are disabled and never query Nominatim or return moc
 test('mock integration routes once, caches results and paginates without duplicate API requests', async () => {
   let geography = 0, overpass = 0, names = 0;
   const hybrid = new HybridPlacesProvider({ async search() { names++; return []; } }, {
-    cities: new CityResolver(async () => { geography++; return [boundary]; }),
-    overpass: new Overpass('https://example.org', async () => { overpass++; return Response.json(data(...Array.from({ length: 25 }, (_, i) => ({ ...node, id: i + 1 })))); }),
+    async search(category, name, s) {
+      const resolved = await new CityResolver(async () => { geography++; return [boundary]; }).resolve(name, s);
+      return new Overpass('https://example.org', async () => { overpass++; return Response.json(data(...Array.from({ length: 25 }, (_, i) => ({ ...node, id: i + 1 })))); }).search(resolved, category, s);
+    },
   });
   const service = new Places(hybrid);
   const a = await service.page('кафе Воронеж'); const b = await service.page('кафе Воронеж', a.next); const c = await service.page('кафе Воронеж', b.next);

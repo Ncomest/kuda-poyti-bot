@@ -24,7 +24,7 @@ export function mapPlaces(data: unknown): Place[] {
     const id = createHash('sha256').update(`osm:${item.osm_type}:${item.osm_id}`).digest('hex').slice(0, 32);
     if (places.some(p => p.id === id)) continue;
     places.push({ id, source: 'osm', osmType: item.osm_type as 'node' | 'way' | 'relation', osmId: Number(item.osm_id), title, address: display || title, latitude, longitude, type: text(item.type) || undefined });
-    if (places.length === 10) break;
+    if (places.length === 40) break;
   }
   return places;
 }
@@ -37,12 +37,13 @@ export class Nominatim implements PlacesProvider {
   }
   // CityResolver must use this same instance, sharing the application's limiter.
   async lookup(query: string, signal = AbortSignal.timeout(6000)): Promise<unknown> {
+    signal = AbortSignal.any([signal, AbortSignal.timeout(6000)]);
     if (this.active || !this.limiter.take()) throw new SearchError('BUSY');
     this.active = true;
     try {
       signal.throwIfAborted();
       const url = new URL('search', this.baseUrl.replace(/\/?$/, '/'));
-      url.search = new URLSearchParams({ q: query, format: 'jsonv2', addressdetails: '1', countrycodes: 'ru', 'accept-language': 'ru', limit: '10' }).toString();
+      url.search = new URLSearchParams({ q: query, format: 'jsonv2', addressdetails: '1', countrycodes: 'ru', 'accept-language': 'ru', limit: '40' }).toString();
       const response = await this.http(url, { headers: { 'User-Agent': `KudaPoytiBot/1.0 (${this.email})`, Accept: 'application/json' }, signal, redirect: 'error' });
       if (!response.ok) {
         await response.body?.cancel();

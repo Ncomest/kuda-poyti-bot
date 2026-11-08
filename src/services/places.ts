@@ -12,8 +12,10 @@ export function parseQuery(input: string): string | null {
 export class Places {
   private cache = new Cache<Place[]>();
   private pending = new Map<string, Promise<Place[]>>();
-  private sessions = new Cache<{ key: string; results: Place[] }>(50, 300_000);
-  constructor(private readonly provider: PlacesProvider) {}
+  private sessions: Cache<{ key: string; results: Place[] }>;
+  constructor(private readonly provider: PlacesProvider, now = Date.now) {
+    this.sessions = new Cache(50, 300_000, now);
+  }
   search(query: string): Promise<Place[]> {
     const key = query.toLocaleLowerCase('ru');
     const cached = this.cache.get(key);
@@ -30,18 +32,26 @@ export class Places {
     let token: string, results: Place[], start = 0;
     if (offset) {
       const match = /^([a-f0-9]{24}):([1-9][0-9]?)$/.exec(offset);
-      if (!match) throw new SearchError('PROVIDER_ERROR');
+      if (!match) throw new SearchError('INVALID_OFFSET');
       token = match[1]!;
       start = Number(match[2]) * 10;
       const session = this.sessions.get(token);
-      if (!session || session.key !== key || start >= session.results.length) throw new SearchError('PROVIDER_ERROR');
+      if (!session || session.key !== key || start >= session.results.length) throw new SearchError('INVALID_OFFSET');
       results = session.results;
     } else {
-      results = [...new Map((await this.search(query)).slice(0, 100).map(p => [p.id, p])).values()];
+      results = [...new Map((await this.search(query)).filter(validPlace).slice(0, 100).map(p => [p.id, p])).values()];
       token = randomBytes(12).toString('hex');
       this.sessions.set(token, { key, results });
     }
     return { results: results.slice(start, start + 10), next: start + 10 < results.length ? `${token}:${start / 10 + 1}` : '' };
   }
 
+}
+
+// Validate the shared provider boundary before producing Telegram Venue cards.
+function validPlace(p: Place): boolean {
+  return typeof p.id === 'string' && Buffer.byteLength(p.id) > 0 && Buffer.byteLength(p.id) <= 64
+    && typeof p.title === 'string' && !!p.title.trim() && typeof p.address === 'string' && !!p.address.trim()
+    && Number.isFinite(p.latitude) && Math.abs(p.latitude) <= 90
+    && Number.isFinite(p.longitude) && Math.abs(p.longitude) <= 180;
 }
