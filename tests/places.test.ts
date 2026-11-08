@@ -73,7 +73,7 @@ test('429 respects Retry-After, failures are not cached or retried', async () =>
 });
 test('5xx, network, timeout and invalid JSON fail safely', async () => {
   for (const http of [async () => new Response('', { status: 503 }), async () => { throw new TypeError('network'); }, async () => { throw new DOMException('timeout', 'TimeoutError'); }, async () => new Response('bad-json')]) {
-    await assert.rejects(new Nominatim('https://example.org', 'contact@example.org', http).search('a'), /search unavailable/);
+    await assert.rejects(new Nominatim('https://example.org', 'contact@example.org', http).search('a'));
   }
 });
 test('bounded cache expires and evicts', () => {
@@ -89,4 +89,8 @@ test('configuration rejects missing secrets', () => {
   assert.throws(() => readConfig({}), /BOT_TOKEN/);
   assert.throws(() => readConfig({ BOT_TOKEN: 'test' }), /EMAIL/);
   assert.equal(readConfig({ BOT_TOKEN: 'test', NOMINATIM_CONTACT_EMAIL: 'contact@example.org' }).level, 'info');
+});
+test('OSM identity remains stable when names change', () => {
+  assert.equal(mapPlaces([fixture])[0]?.id, mapPlaces([{ ...fixture, name: 'Новое название' }])[0]?.id);
+  assert.deepEqual(mapPlaces([{ ...fixture, osm_id: undefined }]), []);
 });

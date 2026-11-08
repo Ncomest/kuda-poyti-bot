@@ -5,5 +5,8 @@ export interface Place {
   latitude: number;
   longitude: number;
   type?: string;
+  source?: 'osm';
+  osmType?: 'node' | 'way' | 'relation';
+  osmId?: number;
 }
-export interface PlacesProvider { search(query: string): Promise<Place[]> }
+export interface PlacesProvider { search(query: string, signal?: AbortSignal): Promise<Place[]> }
