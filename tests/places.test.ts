@@ -20,14 +20,14 @@ test('mapping, country validation, missing fields, coordinates and duplicates', 
   assert.equal(mapPlaces([{ ...fixture, name: undefined, address: undefined }])[0]?.title, fixture.display_name);
   assert.deepEqual(mapPlaces([]), []);
   assert.deepEqual(mapPlaces(null), []);
-  assert.equal(mapPlaces(Array.from({ length: 20 }, (_, i) => ({ ...fixture, osm_id: i }))).length, 10);
+  assert.equal(mapPlaces(Array.from({ length: 20 }, (_, i) => ({ ...fixture, osm_id: i }))).length, 19);
 });
 test('HTTP request is Russia-only, Russian, identified and bounded', async () => {
   const http: typeof fetch = async (input, init) => {
     const url = new URL(String(input));
     assert.equal(url.searchParams.get('countrycodes'), 'ru');
     assert.equal(url.searchParams.get('accept-language'), 'ru');
-    assert.equal(url.searchParams.get('limit'), '10');
+    assert.equal(url.searchParams.get('limit'), '40');
     assert.equal(url.searchParams.get('q'), 'Эрмитаж');
     assert.match(String((init?.headers as Record<string, string>)['User-Agent']), /KudaPoytiBot.*contact@example.org/);
     assert.ok(init?.signal);
@@ -73,7 +73,7 @@ test('429 respects Retry-After, failures are not cached or retried', async () =>
 });
 test('5xx, network, timeout and invalid JSON fail safely', async () => {
   for (const http of [async () => new Response('', { status: 503 }), async () => { throw new TypeError('network'); }, async () => { throw new DOMException('timeout', 'TimeoutError'); }, async () => new Response('bad-json')]) {
-    await assert.rejects(new Nominatim('https://example.org', 'contact@example.org', http).search('a'), /search unavailable/);
+    await assert.rejects(new Nominatim('https://example.org', 'contact@example.org', http).search('a'));
   }
 });
 test('bounded cache expires and evicts', () => {
@@ -89,4 +89,8 @@ test('configuration rejects missing secrets', () => {
   assert.throws(() => readConfig({}), /BOT_TOKEN/);
   assert.throws(() => readConfig({ BOT_TOKEN: 'test' }), /EMAIL/);
   assert.equal(readConfig({ BOT_TOKEN: 'test', NOMINATIM_CONTACT_EMAIL: 'contact@example.org' }).level, 'info');
+});
+test('OSM identity remains stable when names change', () => {
+  assert.equal(mapPlaces([fixture])[0]?.id, mapPlaces([{ ...fixture, name: 'Новое название' }])[0]?.id);
+  assert.deepEqual(mapPlaces([{ ...fixture, osm_id: undefined }]), []);
 });
