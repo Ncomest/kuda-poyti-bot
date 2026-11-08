@@ -1,0 +1,19 @@
+services:
+  bot:
+    build: .
+    restart: unless-stopped
+    init: true
+    environment:
+      BOT_TOKEN: ${BOT_TOKEN:?Задайте BOT_TOKEN в .env}
+      NOMINATIM_URL: ${NOMINATIM_URL:-https://nominatim.openstreetmap.org}
+      NOMINATIM_CONTACT_EMAIL: ${NOMINATIM_CONTACT_EMAIL:?Задайте контактный email в .env}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    stop_grace_period: 15s
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: '2'
